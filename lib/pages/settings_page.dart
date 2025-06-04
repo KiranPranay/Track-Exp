@@ -1,5 +1,3 @@
-// lib/pages/settings_page.dart
-
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,18 +13,16 @@ class _SettingsPageState extends State<SettingsPage> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool _isProcessing = false;
 
-  /// Attempts to pick a .db file. If any exception occurs (e.g. “Unsupported filter”),
-  /// falls back to picking any file.
   Future<FilePickerResult?> _pickDatabaseFile() async {
     FilePickerResult? result;
     try {
-      // 1) Try filtering to “.db” only
+      // First try filtering to `.db`
       result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['db'],
       );
     } catch (_) {
-      // 2) If that fails for any reason, pick ANY file
+      // If that fails, fall back to “any file”
       result = await FilePicker.platform.pickFiles(type: FileType.any);
     }
     return result;
@@ -36,16 +32,13 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isProcessing = true);
 
     try {
-      // Let user pick (with fallback logic inside)
       final result = await _pickDatabaseFile();
       if (result == null) {
-        // User cancelled
         setState(() => _isProcessing = false);
-        return;
+        return; // user canceled
       }
 
       final pickedPath = result.files.single.path!;
-      // 3) Manually verify extension
       if (!pickedPath.toLowerCase().endsWith('.db')) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -58,7 +51,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return;
       }
 
-      // 4) Overwrite local database:
+      // Overwrite local DB
       await _dbHelper.close();
       final originalDbPath = await _dbHelper.getDatabasePath();
       final destFile = File(originalDbPath);
@@ -67,7 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
       }
       await File(pickedPath).copy(originalDbPath);
 
-      // 5) Re-open database (re-initializes)
+      // Re-open DB
       await _dbHelper.getExpenses();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,8 +70,11 @@ class _SettingsPageState extends State<SettingsPage> {
           duration: Duration(seconds: 3),
         ),
       );
+
+      // Notify ExpenseListPage to reload
+      Navigator.pop(context, true);
+      return;
     } catch (e) {
-      // Any other error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Import failed: $e'),
@@ -96,13 +92,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
     try {
       final originalDbPath = await _dbHelper.getDatabasePath();
-
-      // Pick a directory (usually supported on Android/iOS)
       final targetDir = await FilePicker.platform.getDirectoryPath();
       if (targetDir == null) {
-        // User canceled
         setState(() => _isProcessing = false);
-        return;
+        return; // user canceled
       }
 
       final now = DateTime.now();

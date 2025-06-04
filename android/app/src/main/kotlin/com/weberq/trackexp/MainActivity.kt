@@ -1,4 +1,4 @@
-package com.example.track_exp
+package com.weberq.trackexp
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,3 +1,5 @@
+// lib/pages/expense_list_page.dart
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import '../models/expense.dart';
 import '../db/database_helper.dart';
 import '../utils/date_utils.dart';
 import 'add_edit_expense_page.dart';
+import 'settings_page.dart'; // <— NEW import
 
 class ExpenseListPage extends StatefulWidget {
   @override
@@ -34,7 +37,9 @@ class _ExpenseListPageState extends State<ExpenseListPage> {
       context,
       MaterialPageRoute(builder: (_) => AddEditExpensePage(expense: existing)),
     );
-    if (shouldReload ?? false) _loadExpenses();
+    if (shouldReload ?? false) {
+      _loadExpenses();
+    }
   }
 
   void _toggleClaimed(Expense expense) async {
@@ -134,21 +139,17 @@ class _ExpenseListPageState extends State<ExpenseListPage> {
         title: const Text('Expenses'),
         centerTitle: true,
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Row(
-              children: [
-                const Text('Show Claimed', style: TextStyle(fontSize: 12)),
-                Switch(
-                  value: _showClaimed,
-                  onChanged: (val) {
-                    setState(() => _showClaimed = val);
-                  },
-                  activeColor: Colors.tealAccent,
-                ),
-              ],
-            ),
+          // <-- NEW: a settings icon that navigates to SettingsPage
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => SettingsPage()),
+              );
+            },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body:

@@ -1,3 +1,5 @@
+// lib/db/database_helper.dart
+
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -10,6 +12,7 @@ class DatabaseHelper {
   factory DatabaseHelper() => _instance;
 
   static Database? _database;
+  static String? _dbPath; // caches the path once initialized
 
   DatabaseHelper._internal();
 
@@ -19,9 +22,16 @@ class DatabaseHelper {
     return _database!;
   }
 
-  Future<Database> _initDatabase() async {
+  /// Returns the file path of 'expenses.db' on disk.
+  Future<String> getDatabasePath() async {
+    if (_dbPath != null) return _dbPath!;
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = p.join(documentsDirectory.path, 'expenses.db');
+    _dbPath = p.join(documentsDirectory.path, 'expenses.db');
+    return _dbPath!;
+  }
+
+  Future<Database> _initDatabase() async {
+    final path = await getDatabasePath();
     return await openDatabase(path, version: 1, onCreate: _onCreate);
   }
 
@@ -65,8 +75,14 @@ class DatabaseHelper {
       'expenses',
       orderBy: 'dateTime DESC',
     );
-    return List.generate(maps.length, (i) {
-      return Expense.fromMap(maps[i]);
-    });
+    return List.generate(maps.length, (i) => Expense.fromMap(maps[i]));
+  }
+
+  /// Close the database. Useful before importing/overwriting the file.
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
   }
 }

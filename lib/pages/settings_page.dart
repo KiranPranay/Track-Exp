@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import '../db/database_helper.dart';
 
 class SettingsPage extends StatefulWidget {
+  const SettingsPage({Key? key}) : super(key: key);
+
   @override
   _SettingsPageState createState() => _SettingsPageState();
 }
@@ -14,18 +16,15 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isProcessing = false;
 
   Future<FilePickerResult?> _pickDatabaseFile() async {
-    FilePickerResult? result;
     try {
-      // First try filtering to `.db`
-      result = await FilePicker.platform.pickFiles(
+      return await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['db'],
       );
     } catch (_) {
-      // If that fails, fall back to “any file”
-      result = await FilePicker.platform.pickFiles(type: FileType.any);
+      // Fallback if filtering fails
+      return await FilePicker.platform.pickFiles(type: FileType.any);
     }
-    return result;
   }
 
   Future<void> _importDatabase() async {
@@ -35,7 +34,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final result = await _pickDatabaseFile();
       if (result == null) {
         setState(() => _isProcessing = false);
-        return; // user canceled
+        return;
       }
 
       final pickedPath = result.files.single.path!;
@@ -51,16 +50,14 @@ class _SettingsPageState extends State<SettingsPage> {
         return;
       }
 
-      // Overwrite local DB
+      // Overwrite local database file
       await _dbHelper.close();
-      final originalDbPath = await _dbHelper.getDatabasePath();
-      final destFile = File(originalDbPath);
-      if (await destFile.exists()) {
-        await destFile.delete();
-      }
-      await File(pickedPath).copy(originalDbPath);
+      final originalPath = await _dbHelper.getDatabasePath();
+      final dest = File(originalPath);
+      if (await dest.exists()) await dest.delete();
+      await File(pickedPath).copy(originalPath);
 
-      // Re-open DB
+      // Re-open to reinitialize
       await _dbHelper.getExpenses();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +68,6 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       );
 
-      // Notify ExpenseListPage to reload
       Navigator.pop(context, true);
       return;
     } catch (e) {
@@ -91,21 +87,25 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isProcessing = true);
 
     try {
-      final originalDbPath = await _dbHelper.getDatabasePath();
+      final originalPath = await _dbHelper.getDatabasePath();
       final targetDir = await FilePicker.platform.getDirectoryPath();
       if (targetDir == null) {
         setState(() => _isProcessing = false);
-        return; // user canceled
+        return;
       }
 
       final now = DateTime.now();
       final timestamp =
-          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
-          '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
-      final backupFileName = 'expenses_backup_$timestamp.db';
-      final targetPath = '$targetDir/$backupFileName';
+          '${now.year}'
+          '${now.month.toString().padLeft(2, '0')}'
+          '${now.day.toString().padLeft(2, '0')}_'
+          '${now.hour.toString().padLeft(2, '0')}'
+          '${now.minute.toString().padLeft(2, '0')}'
+          '${now.second.toString().padLeft(2, '0')}';
+      final backupName = 'expenses_backup_$timestamp.db';
+      final targetPath = '$targetDir/$backupName';
 
-      await File(originalDbPath).copy(targetPath);
+      await File(originalPath).copy(targetPath);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -134,7 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings'), centerTitle: true),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

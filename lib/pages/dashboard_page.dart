@@ -1,7 +1,5 @@
 // lib/pages/dashboard_page.dart
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
 import '../db/database_helper.dart';
@@ -32,13 +30,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadStats() async {
     final all = await _db.getExpenses();
-
     double tot = 0, cl = 0;
     for (var e in all) {
       tot += e.amount;
       if (e.isClaimed) cl += e.amount;
     }
-
     setState(() {
       _total = tot;
       _claimed = cl;
@@ -47,16 +43,11 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  Widget _buildStatTile(
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
+  Widget _statChip(IconData icon, String label, String value, Color color) {
     return Expanded(
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
+          Icon(icon, color: color, size: 24),
           const SizedBox(height: 4),
           Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 2),
@@ -64,7 +55,7 @@ class _DashboardPageState extends State<DashboardPage> {
             value,
             style: TextStyle(
               color: color,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -73,11 +64,11 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildRecentTile(Expense e) {
+  Widget _buildRecentItem(Expense e) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       title: Text(
-        '${e.vendor} - ₹${e.amount.toStringAsFixed(2)}',
+        '${e.vendor} − ₹${e.amount.toStringAsFixed(2)}',
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -119,60 +110,77 @@ class _DashboardPageState extends State<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ─── Unified Summary Card ─────────────────────────
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 24,
-                  horizontal: 16,
-                ),
-                child: Column(
-                  children: [
-                    // Title & Total
-                    const Text(
-                      'All Time',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(width: 4),
-                        Text(
-                          '₹${_total.toStringAsFixed(2)}',
-                          style: const TextStyle(
+                color: const Color(0xFF1E1E1E),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 20,
+                  ),
+                  child: Column(
+                    children: [
+                      // header row
+                      Row(
+                        children: const [
+                          Icon(
+                            Icons.pie_chart_outline,
                             color: Colors.tealAccent,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
+                            size: 28,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Claimed / Unclaimed row
-                    Row(
-                      children: [
-                        _buildStatTile(
-                          Icons.check_circle_outline,
-                          'Claimed',
-                          '₹${_claimed.toStringAsFixed(2)}',
-                          Colors.greenAccent,
-                        ),
-                        _buildStatTile(
-                          Icons.hourglass_empty,
-                          'Unclaimed',
-                          '₹${_unclaimed.toStringAsFixed(2)}',
-                          Colors.redAccent,
-                        ),
-                      ],
-                    ),
-                  ],
+                          SizedBox(width: 8),
+                          Text(
+                            'All-Time Summary',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // total amount (now with rupee icon!)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(width: 4),
+                          Text(
+                            '₹${_total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.tealAccent,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // claimed / unclaimed chips
+                      Row(
+                        children: [
+                          _statChip(
+                            Icons.check_circle_outline,
+                            'Claimed',
+                            '₹${_claimed.toStringAsFixed(2)}',
+                            Colors.greenAccent,
+                          ),
+                          _statChip(
+                            Icons.hourglass_empty,
+                            'Unclaimed',
+                            '₹${_unclaimed.toStringAsFixed(2)}',
+                            Colors.redAccent,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               // ─── Recent 5 Expenses ────────────────────────────
               const Text(
                 'Recent Expenses',
@@ -180,11 +188,11 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 8),
               for (var e in _recent) ...[
-                _buildRecentTile(e),
+                _buildRecentItem(e),
                 const Divider(color: Colors.white12, height: 1),
               ],
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
@@ -192,7 +200,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     MaterialPageRoute(builder: (_) => const AllExpensesPage()),
                   );
                 },
-                child: const Text('View All Expenses'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.tealAccent,
                   foregroundColor: Colors.black,
@@ -201,6 +208,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                child: const Text('View All Expenses'),
               ),
             ],
           ),

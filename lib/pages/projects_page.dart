@@ -13,8 +13,8 @@ class ProjectsPage extends StatefulWidget {
 }
 
 class _ProjectsPageState extends State<ProjectsPage> {
-  List<Project> _projects = [];
   final _db = DatabaseHelper();
+  List<Project> _projects = [];
 
   @override
   void initState() {
@@ -23,36 +23,76 @@ class _ProjectsPageState extends State<ProjectsPage> {
   }
 
   Future<void> _reload() async {
-    final projects = await _db.getProjects();
-    setState(() => _projects = projects);
+    final list = await _db.getProjects();
+    setState(() => _projects = list);
   }
 
-  Future<void> _addProject() async {
-    final nameCtl = TextEditingController();
-    final result = await showDialog<bool>(
+  /// Adds or edits a project.  If [project] is non-null, it's an edit.
+  Future<void> _showAddEditDialog([Project? project]) async {
+    final isEdit = project != null;
+    final nameCtl = TextEditingController(text: project?.name ?? '');
+
+    final didConfirm = await showDialog<bool>(
       context: context,
       builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('New Project'),
+          (ctx) => AlertDialog(
+            title: Text(isEdit ? 'Edit Project' : 'New Project'),
             content: TextField(
               controller: nameCtl,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: const InputDecoration(labelText: 'Project Name'),
+              autofocus: true,
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Add'),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(isEdit ? 'Update' : 'Add'),
               ),
             ],
           ),
     );
 
-    if (result == true && nameCtl.text.trim().isNotEmpty) {
-      await _db.insertProject(Project(name: nameCtl.text.trim()));
+    if (didConfirm == true && nameCtl.text.trim().isNotEmpty) {
+      final name = nameCtl.text.trim();
+      if (isEdit) {
+        // Update existing
+        await _db.updateProject(Project(id: project!.id, name: name));
+      } else {
+        // Insert new
+        await _db.insertProject(Project(name: name));
+      }
+      _reload();
+    }
+  }
+
+  Future<void> _confirmDelete(Project project) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Delete Project'),
+            content: Text('Are you sure you want to delete "${project.name}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      await _db.deleteProject(project.id!);
       _reload();
     }
   }
@@ -66,27 +106,56 @@ class _ProjectsPageState extends State<ProjectsPage> {
               ? const Center(child: Text('No projects yet.'))
               : ListView.builder(
                 itemCount: _projects.length,
-                itemBuilder: (context, index) {
-                  final project = _projects[index];
+                itemBuilder: (ctx, i) {
+                  final p = _projects[i];
                   return ListTile(
-                    title: Text(project.name),
-                    trailing: const Icon(Icons.chevron_right),
+                    title: Text(
+                      p.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Edit button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.tealAccent,
+                          ),
+                          onPressed: () => _showAddEditDialog(p),
+                        ),
+                        // Delete button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () => _confirmDelete(p),
+                        ),
+                        // Navigate into project
+                        const Icon(Icons.chevron_right, color: Colors.white70),
+                      ],
+                    ),
                     onTap: () async {
                       final didChange = await Navigator.push<bool>(
-                        context,
+                        ctx,
                         MaterialPageRoute(
-                          builder: (_) => ProjectDetailPage(project: project),
+                          builder: (_) => ProjectDetailPage(project: p),
                         ),
                       );
                       if (didChange == true) _reload();
                     },
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                   );
                 },
               ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.teal,
-        child: const Icon(Icons.business),
-        onPressed: _addProject,
+        child: const Icon(Icons.add_business),
+        onPressed: () => _showAddEditDialog(),
       ),
     );
   }

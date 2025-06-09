@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'theme.dart';
+import 'pages/dashboard_page.dart'; // ← new
 import 'pages/all_expenses_page.dart';
 import 'pages/projects_page.dart';
 import 'pages/settings_page.dart';
@@ -18,9 +19,7 @@ class ExpenseTrackerApp extends StatelessWidget {
     return MaterialApp(
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
-      theme:
-          AppTheme
-              .darkTheme, // or ThemeData.dark() if you don’t have a theme.dart
+      theme: AppTheme.darkTheme,
       home: const HomeShell(),
     );
   }
@@ -36,15 +35,15 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
 
-  // The three pages: All Expenses, Projects, Settings
   static const List<Widget> _pages = [
+    DashboardPage(),
     AllExpensesPage(),
     ProjectsPage(),
     SettingsPage(),
   ];
 
-  // Bottom nav items: add Settings at the end
   static const List<BottomNavigationBarItem> _navItems = [
+    BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
     BottomNavigationBarItem(
       icon: Icon(Icons.receipt_long),
       label: 'All Expenses',
@@ -53,20 +52,16 @@ class _HomeShellState extends State<HomeShell> {
     BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
   ];
 
-  void _onTap(int idx) {
-    setState(() {
-      _currentIndex = idx;
-    });
-  }
+  void _onTap(int idx) => setState(() => _currentIndex = idx);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        items: _navItems,
         currentIndex: _currentIndex,
         onTap: _onTap,
-        items: _navItems,
         selectedItemColor: Theme.of(context).colorScheme.secondary,
         unselectedItemColor: Colors.white70,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,

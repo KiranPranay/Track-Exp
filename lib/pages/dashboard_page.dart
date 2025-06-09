@@ -47,31 +47,28 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  Widget _buildStatCard(String title, String value, Color color) {
+  Widget _buildStatTile(
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Expanded(
-      child: Card(
-        color: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Text(
-                title,
-                style: TextStyle(color: color.withOpacity(0.7), fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -88,11 +85,11 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       subtitle: Text(
         formatDateTime(e.dateTime),
-        style: const TextStyle(color: Colors.white60),
+        style: const TextStyle(color: Colors.white60, fontSize: 12),
       ),
       trailing: Checkbox(
         value: e.isClaimed,
-        activeColor: Colors.teal,
+        activeColor: Colors.tealAccent,
         onChanged: (_) async {
           e.isClaimed = !e.isClaimed;
           await _db.updateExpense(e);
@@ -121,54 +118,62 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // --- All‐Time Summary Card ---
-              Card(
-                color: const Color(0xFF1E1E1E),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              // ─── Unified Summary Card ─────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'All Time',
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '₹${_total.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.tealAccent,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
+                child: Column(
+                  children: [
+                    // Title & Total
+                    const Text(
+                      'All Time',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(width: 4),
+                        Text(
+                          '₹${_total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.tealAccent,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Claimed / Unclaimed row
+                    Row(
+                      children: [
+                        _buildStatTile(
+                          Icons.check_circle_outline,
+                          'Claimed',
+                          '₹${_claimed.toStringAsFixed(2)}',
+                          Colors.greenAccent,
+                        ),
+                        _buildStatTile(
+                          Icons.hourglass_empty,
+                          'Unclaimed',
+                          '₹${_unclaimed.toStringAsFixed(2)}',
+                          Colors.redAccent,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-
-              const SizedBox(height: 16),
-              // --- Claimed / Unclaimed Row ---
-              Row(
-                children: [
-                  _buildStatCard(
-                    'Claimed',
-                    '₹${_claimed.toStringAsFixed(2)}',
-                    Colors.greenAccent,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildStatCard(
-                    'Unclaimed',
-                    '₹${_unclaimed.toStringAsFixed(2)}',
-                    Colors.redAccent,
-                  ),
-                ],
               ),
 
               const SizedBox(height: 24),
-              // --- Recent 5 Expenses ---
+              // ─── Recent 5 Expenses ────────────────────────────
               const Text(
                 'Recent Expenses',
                 style: TextStyle(color: Colors.white70, fontSize: 18),
@@ -176,10 +181,10 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 8),
               for (var e in _recent) ...[
                 _buildRecentTile(e),
-                const Divider(color: Colors.white12),
+                const Divider(color: Colors.white12, height: 1),
               ],
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(

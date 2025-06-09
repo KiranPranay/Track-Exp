@@ -1,7 +1,14 @@
 // lib/pages/projects_page.dart
 
+import 'dart:io';
+
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
 import '../models/project.dart';
+import '../models/expense.dart';
 import '../db/database_helper.dart';
 import 'project_detail_page.dart';
 
@@ -27,12 +34,73 @@ class _ProjectsPageState extends State<ProjectsPage> {
     setState(() => _projects = list);
   }
 
-  /// Adds or edits a project.  If [project] is non-null, it's an edit.
+  Future<Directory> _getExportDirectory() async {
+    Directory baseDir;
+    if (Platform.isAndroid) {
+      baseDir = Directory('/storage/emulated/0/Download');
+    } else {
+      final downloads = await getExternalStorageDirectories(
+        type: StorageDirectory.downloads,
+      );
+      baseDir =
+          (downloads != null && downloads.isNotEmpty)
+              ? downloads.first
+              : await getApplicationDocumentsDirectory();
+    }
+    final exportDir = Directory(p.join(baseDir.path, 'Track_Expense', 'data'));
+    if (!await exportDir.exists()) {
+      await exportDir.create(recursive: true);
+    }
+    return exportDir;
+  }
+
+  Future<void> _exportGroupedCsv() async {
+    final projects = await _db.getProjects();
+    final rows = <List<dynamic>>[
+      [
+        'Project',
+        'ID',
+        'DateTime',
+        'Vendor',
+        'Amount',
+        'Claimed',
+        'Description',
+      ],
+    ];
+
+    for (var pjt in projects) {
+      final exps = await _db.getExpenses(projectId: pjt.id);
+      for (var e in exps) {
+        rows.add([
+          pjt.name,
+          e.id,
+          e.dateTime.toIso8601String(),
+          e.vendor,
+          e.amount,
+          e.isClaimed ? 1 : 0,
+          e.description,
+        ]);
+      }
+    }
+
+    final csv = const ListToCsvConverter().convert(rows);
+    final dir = await _getExportDirectory();
+    final filePath = p.join(
+      dir.path,
+      'by_project_${DateTime.now().millisecondsSinceEpoch}.csv',
+    );
+    await File(filePath).writeAsString(csv);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Exported grouped CSV to:\n$filePath')),
+    );
+  }
+
   Future<void> _showAddEditDialog([Project? project]) async {
     final isEdit = project != null;
     final nameCtl = TextEditingController(text: project?.name ?? '');
 
-    final didConfirm = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (ctx) => AlertDialog(
@@ -40,7 +108,6 @@ class _ProjectsPageState extends State<ProjectsPage> {
             content: TextField(
               controller: nameCtl,
               decoration: const InputDecoration(labelText: 'Project Name'),
-              autofocus: true,
             ),
             actions: [
               TextButton(
@@ -55,26 +122,24 @@ class _ProjectsPageState extends State<ProjectsPage> {
           ),
     );
 
-    if (didConfirm == true && nameCtl.text.trim().isNotEmpty) {
+    if (confirmed == true && nameCtl.text.trim().isNotEmpty) {
       final name = nameCtl.text.trim();
       if (isEdit) {
-        // Update existing
         await _db.updateProject(Project(id: project!.id, name: name));
       } else {
-        // Insert new
         await _db.insertProject(Project(name: name));
       }
       _reload();
     }
   }
 
-  Future<void> _confirmDelete(Project project) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _confirmDelete(Project p) async {
+    final ok = await showDialog<bool>(
       context: context,
       builder:
           (ctx) => AlertDialog(
             title: const Text('Delete Project'),
-            content: Text('Are you sure you want to delete "${project.name}"?'),
+            content: Text('Delete "${p.name}" and all its expenses?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -90,9 +155,8 @@ class _ProjectsPageState extends State<ProjectsPage> {
             ],
           ),
     );
-
-    if (confirmed == true) {
-      await _db.deleteProject(project.id!);
+    if (ok == true) {
+      await _db.deleteProject(p.id!);
       _reload();
     }
   }
@@ -100,50 +164,56 @@ class _ProjectsPageState extends State<ProjectsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Projects')),
+      appBar: AppBar(
+        title: const Text('Projects'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Export all by project to CSV',
+            onPressed: _exportGroupedCsv,
+          ),
+        ],
+      ),
       body:
           _projects.isEmpty
               ? const Center(child: Text('No projects yet.'))
               : ListView.builder(
                 itemCount: _projects.length,
                 itemBuilder: (ctx, i) {
-                  final p = _projects[i];
+                  final pjt = _projects[i];
                   return ListTile(
                     title: Text(
-                      p.name,
+                      pjt.name,
                       style: const TextStyle(color: Colors.white),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Edit button
                         IconButton(
                           icon: const Icon(
                             Icons.edit,
                             color: Colors.tealAccent,
                           ),
-                          onPressed: () => _showAddEditDialog(p),
+                          onPressed: () => _showAddEditDialog(pjt),
                         ),
-                        // Delete button
                         IconButton(
                           icon: const Icon(
                             Icons.delete,
                             color: Colors.redAccent,
                           ),
-                          onPressed: () => _confirmDelete(p),
+                          onPressed: () => _confirmDelete(pjt),
                         ),
-                        // Navigate into project
                         const Icon(Icons.chevron_right, color: Colors.white70),
                       ],
                     ),
                     onTap: () async {
-                      final didChange = await Navigator.push<bool>(
-                        ctx,
+                      final changed = await Navigator.push<bool>(
+                        context,
                         MaterialPageRoute(
-                          builder: (_) => ProjectDetailPage(project: p),
+                          builder: (_) => ProjectDetailPage(project: pjt),
                         ),
                       );
-                      if (didChange == true) _reload();
+                      if (changed == true) _reload();
                     },
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,

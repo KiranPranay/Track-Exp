@@ -1,7 +1,11 @@
+// lib/pages/settings_page.dart
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../db/database_helper.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -127,6 +131,17 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isProcessing = false);
   }
 
+  Future<void> _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open URL:\n$url')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
@@ -153,6 +168,37 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 32),
               Center(child: CircularProgressIndicator(color: primary)),
             ],
+
+            const SizedBox(height: 40),
+            const Divider(),
+            const SizedBox(height: 16),
+
+            // About & Links
+            ListTile(
+              leading: const Icon(Icons.privacy_tip),
+              title: const Text('Privacy Policy'),
+              onTap:
+                  () => _launchURL('https://kiranpranay.github.io/Track-Exp/'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: const Text('Source Code'),
+              onTap:
+                  () => _launchURL('https://github.com/KiranPranay/Track-Exp'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Developer'),
+              onTap: () => _launchURL('https://github.com/KiranPranay'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.article),
+              title: const Text('License'),
+              onTap:
+                  () => _launchURL(
+                    'https://github.com/KiranPranay/Track-Exp/blob/main/LICENSE',
+                  ),
+            ),
           ],
         ),
       ),
